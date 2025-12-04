@@ -1,72 +1,95 @@
 package it.unical;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
 public class StorageTest {
 
+    private Storage storage;
+
     @BeforeEach
-    public void setup(){
-        storange = new Storage();
-        storange.addItem("sedia",6);
-        storange.addItem("tavoli",2);
-    }
-
-
-    @Test
-    public void testAddItemCorrectlyAdds(){
-        storange.addItem("lampada",2);
-        assertEquals(2,storange.getQuantity("lampada"));
+    public void setup() {
+        storage = new Storage();
+        storage.addItem("sedia", 6);
+        storage.addItem("tavoli", 2);
     }
 
     @Test
-    public void testAddItemAccumulatesQuantity(){
-        storange.addItem("tavoli",1);
-        assertEquals(3,storange.getQuantity("tavoli"));
+    public void aggiuntaArticoloFunzionaCorrettamente() {
+        storage.addItem("lampada", 2);
+        assertEquals(2, storage.getQuantity("lampada"));
+    }
+    
+    @Test
+    public void aggiuntaArticoloSommaQuantitaCorretta() {
+        storage.addItem("tavoli", 1);
+        assertEquals(3, storage.getQuantity("tavoli")); // 2 da setup + 1
     }
 
     @Test
-    public void testAddItemInvalidQuantityThrowsException(){
-
-        assertTrhows(IllegalArgumentException.class,
-                ()-> storange.addItem("tenda",-2), "quantity must be greater than zero");
+    public void aggiuntaArticoloQuantitaNonValidaLanciaEccezione() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> storage.addItem("tenda", -2)
+        );
+        assertEquals("quantity must be greater than zero", ex.getMessage());
     }
 
     @Test
-    public void testAddItemNormalizesName(){
+    public void aggiuntaArticoloNormalizzaIlNome() {
+        storage.addItem("   SEDIA   ", 1);
 
-        storange.addItem("   SEDIA   ", 1);
-        map<String, Integer> items = storange.getItems();
+        Map<String, Integer> items = storage.getItems();
 
-        assertTrue(items.containskey("sedia"));
-        assertFalse(items.containskey("SEDIA"));
-        assertFalse(items.containskey(" seDIA  "));
+        assertTrue(items.containsKey("sedia"));
+        assertFalse(items.containsKey("SEDIA"));
+        assertFalse(items.containsKey(" seDIA  "));
     }
 
     @Test
-    public void testDeliverSuccess(){
+    public void consegnaArticoloRiesce() {
+        Storage.DeliveryStatus result = storage.deliver("tavoli", 2);
 
-        storange.deliver("tavoli",2);
-        assertTrue(storange.getQuantity("tavoli"),1);
+        assertEquals(Storage.DeliveryStatus.DELIVERED, result);
+        assertEquals(0, storage.getQuantity("tavoli"));
+        assertFalse(storage.getItems().containsKey("tavoli"));
     }
 
     @Test
-    public void testDeliverNoSuchItem(){
-        Storage.DeliveryStatus results = storange.shipItem("porte",5);
-        assertEquals(Storage.DeliveryStatus.NO_SUCH_ITEM,result);
+    public void consegnaArticoloNonEsistenteRestituisceErrore() {
+        Storage.DeliveryStatus result = storage.deliver("porte", 5);
+        assertEquals(Storage.DeliveryStatus.NO_SUCH_ITEM, result);
     }
 
-    public void testDeliverNotEnoughStock(){
+    @Test
+    public void consegnaArticoloSenzaStockSufficienteRestituisceErrore() {
+        Storage.DeliveryStatus result = storage.deliver("sedia", 10);
 
-        Storage.DeliveryStatus results = storange.shipItem("sedia",10);
-        assertEquals(Storange.DeliveryStatus.NOT_ENOUGH_STOCK,result);
-        assertEquals(7,storange.getQuantity("sedia"),"La quantità non deve cambiare");
+        assertEquals(Storage.DeliveryStatus.NOT_ENOUGH_STOCK, result);
+        assertEquals(6, storage.getQuantity("sedia"),
+                "La quantità non deve cambiare se non ci sono abbastanza pezzi");
     }
 
-    public void testDeliverRemovesItemWhenQuantityBecomesZero (){
-
+    @Test
+    public void consegnaRimuoveArticoloQuandoQuantitaDiventaZero() {
         storage.addItem("porte", 10);
 
-        DeliveryStatus result = storage.deliver("porte", 10);
+        Storage.DeliveryStatus result = storage.deliver("porte", 10);
 
-        assertEquals(DeliveryStatus.DELIVERED, result);
+        assertEquals(Storage.DeliveryStatus.DELIVERED, result);
         assertFalse(storage.getItems().containsKey("porte"));
+    }
+
+    @Test
+    public void consegnaQuantitaNonValidaLanciaEccezione() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> storage.deliver("sedia", 0)
+        );
+        assertEquals("quantity must be greater than zero", ex.getMessage());
     }
 }
